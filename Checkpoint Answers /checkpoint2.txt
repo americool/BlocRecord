@@ -2,5 +2,7 @@
 2. Lazy loading doesn’t calculate (or initiate) the schema until its actually needed. Eager loading calculates the schema when the model object is first initialized. 
 3. CREATE TABLE actually makes a new table and defines its attributes, INSERT INTO adds data into a table. 
 4. Include is for adding methods to an instance of a class and extend is for adding class methods. One would use extend when we only wanted to add class methods to another class. 
-6. This would be whatever it’s ID is? (not sure) 
-7. 
+6. 
+7.This would be whatever it’s ID is? (not sure) 
+8. 
+
