@@ -1,0 +1,7 @@
+1. Gems are package managers which store code for your application to use it’s a nice way of nesting functionality and organizing and separating code. It is also a way to pull prewritten functionality into a project that might be redundant and time-consuming to design. 
+2. Lazy loading doesn’t calculate (or initiate) the schema until its actually needed. Eager loading calculates the schema when the model object is first initialized. 
+3. CREATE TABLE actually makes a new table and defines its attributes, INSERT INTO adds data into a table. 
+4. Include is for adding instance methods and extend is for adding class methods. One would use extend when we only wanted to add class methods to another class. Instance methods are useful for modifying or targeting a specific case of a class(object), whereas class methods are useful for acting on general or unspecified instance of a class. 
+6. Because you are saving a specific instance of the said class. 
+7. UPDATE character SET star_rating = 2 WHERE id = 1  
+8. We need hat utilize the BlocRecord base initialize method by passing it columns and properties.  
