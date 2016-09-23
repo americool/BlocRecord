@@ -1,8 +1,7 @@
 def find_by(attribute, value)
     # something like this?
-    answer = connection.get_first_row <<-SQL
-      SELECT * FROM #{table}
+    connection.get_first_row <<-SQL
+      SELECT * FROM #{self.table}
       WHERE #{attribute} = #{value};
     SQL
-    answer
 end
