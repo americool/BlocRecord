@@ -92,7 +92,7 @@ module Selection
     end
   end
 
-  def rows_to_array
+  def rows_to_array(rows)
     rows.map { |row| new(Hash[columns.zip(row)]) }
   end
 end

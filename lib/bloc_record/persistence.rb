@@ -42,5 +42,5 @@ module Persistence
 
   def save
     self.save! rescue false
-  end 
+  end
 end
