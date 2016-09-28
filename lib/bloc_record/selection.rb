@@ -6,6 +6,13 @@ module Selection
     if ids.length == 1
       find_one(ids.first)
     else
+      begin
+        ids.each do |x|
+          x >= 0
+        end
+      rescue
+        return puts "Invalid input"
+      end
       rows = connection.execute <<-SQL
         SELECT #{columns.join ","} FROM #{table} WHERE id IN (#{ids.join(",")});
       SQL
@@ -15,6 +22,8 @@ module Selection
   end
 
   def find_one(id)
+    raise ArgumentError, 'ID must be greater than 0' if id <= 0
+
     row = connection.get_first_row <<-SQL
       SELECT #{columns.join ","} FROM #{table}
       WHERE id = #{id};
@@ -23,12 +32,46 @@ module Selection
     init_object_from_row(row)
   end
 
+  def method_missing(method_name, *args, &block)
+    first_part = method_name[0..6]
+    second_part = method_name[8..-1]
+    if first_part == "find_by"
+      args.unshift(second_part)
+      self.send(:find_by, *args)
+    end
+  end
+
   def find_by(attribute, value)
     row = connection.get_first_row <<-SQL
       SELECT #{columns.join ","} FROM #{table} WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)};
     SQL
 
     init_object_from_row(row)
+  end
+
+  def find_each(batch_hash={})
+    if batch_hash.empty?
+      connection.all.each do |item|
+        yield item
+      end
+    else
+      start = batch_hash[:start]
+      limit = batch_hash[:batch_size]
+      count = 0
+      collection = connection.all
+      while count < limit
+        yield collection[start + count]
+        count+=1
+      end
+    end
+  end 
+
+  def find_in_batches(batch_hash)
+    array = []
+    find_each(batch_hash) do |x|
+     array << x
+   end
+    yield array
   end
 
   def take_one
@@ -42,13 +85,13 @@ module Selection
   end
 
   def take(num=1)
+    raise ArgumentError, 'Must be an Integer' unless num.is_a?(Integer)
    if num > 1
      rows = connection.execute <<-SQL
        SELECT #{columns.join ","} FROM #{table}
        ORDER BY random()
        LIMIT #{num};
      SQL
-
      rows_to_array(rows)
    else
      take_one
@@ -81,7 +124,7 @@ module Selection
     SQL
 
     rows_to_array(rows)
-   end
+  end
 
 
   private
