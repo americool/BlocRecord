@@ -22,7 +22,7 @@ module Selection
   end
 
   def find_one(id)
-    raise ArgumentError, 'ID must be at least 0' if id < 0 #had to change this from <= to < checkpoint4 to work with the address book selection in the menu 
+    raise ArgumentError, 'ID must be at least 0' if id < 0 #had to change this from <= to < checkpoint4 to work with the address book selection in the menu
 
     row = connection.get_first_row <<-SQL
       SELECT #{columns.join ","} FROM #{table}
@@ -150,11 +150,18 @@ module Selection
   end
 
   def order(*args)
-    if args.count > 1
-      order = args.join(",")
-    else
-      order = args.first.to_s
+    case args.first
+    when String
+      if args.count > 1
+        order = args.join(",")
+      else
+        order = args.first.to_s
+      end
+    when Hash
+      order_hash = BlocRecord::Utility.convert_keys(args)
+      order = order_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(",")
     end
+    
     rows = connection.execute <<-SQL
       SELECT * FROM #{table}
       ORDER BY #{order};
