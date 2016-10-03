@@ -140,6 +140,7 @@ module Selection
       end
     end
 
+
     sql = <<-SQL
       SELECT #{columns.join ","} FROM #{table}
       WHERE #{expression};
@@ -154,14 +155,12 @@ module Selection
     when String
       if args.count > 1
         order = args.join(",")
-      else
-        order = args.first.to_s
       end
     when Hash
       order_hash = BlocRecord::Utility.convert_keys(args)
-      order = order_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(",")
+      order = order_hash.map {|key, value| "#{key} #{BlocRecord::Utility.sql_strings(value)}"}.join(",")
     end
-    
+
     rows = connection.execute <<-SQL
       SELECT * FROM #{table}
       ORDER BY #{order};
@@ -179,15 +178,26 @@ module Selection
       case args.first
       when String
         rows = connection.execute <<-SQL
-          SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(arg)};
+          SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(arg.first)};
         SQL
       when Symbol
         rows = connection.execute <<-SQL
           SELECT * FROM #{table}
-          INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id
+          INNER JOIN #{arg} ON #{arg.first}.#{table}_id = #{table}.id
         SQL
       end
     end
+    rows_to_array(rows)
+  end
+
+  def joins(args)
+    hash = BlocRecord::Utility.convert_keys(args)
+    string = hash.map {|key, value| "#{key},#{BlocRecord::Utility.sql_strings(value)}"}.join(",")
+    array = string.split(',')
+    joins += array.each {|arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}.join(" ")
+    rows = connection.execute <<-SQL
+      SELECT * FROM #{table} #{joins}
+    SQL
     rows_to_array(rows)
   end
 
