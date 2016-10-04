@@ -24,24 +24,56 @@ module Persistence
   end
 
   def update(ids, updates)
-    updates = BlocRecord::Utility.convert_keys(updates)
-    updates.delete "id"
-    updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
+    if updates.keys.uniq == updates.keys
+      updates = BlocRecord::Utility.convert_keys(updates)
+      updates.delete "id"
+      updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
 
-    if ids.class == Fixnum
-      where_clause = "WHERE id = #{ids};"
-    elsif ids.class == Array
-      where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
+      if ids.class == Fixnum
+        where_clause = "WHERE id = #{ids};"
+      elsif ids.class == Array
+        where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
+      else
+        where_clause = ";"
+      end
+
+      self.class.connection.execute <<-SQL
+        UPDATE #{self.class.table}
+        SET #{updates_array * ","} #{where_clause}
+      SQL
+
+      true
     else
-      where_clause = ";"
+      updates.delete "id"
+      keys = updates.keys
+      potential_duplicate = nil
+      keys.each_with_index do |name, index|
+        if potential_duplicate == name
+          duplicate = name
+          duplicate_index = index
+          break
+        else
+          potential_duplicate = name
+        end
+      end
+      new_hash = updates[duplicate]
+      new_id = ids[duplicate_index]
+      updates.delete(duplicate)
+      ids.delete(duplicate_index)
+      update(new_id, new_hash)
+      update(ids, updates)
     end
+  end
 
-    self.class.connection.execute <<-SQL
-      UPDATE #{self.class.table}
-      SET #{updates_array * ","} #{where_clause}
-    SQL
-
-    true
+  def method_missing(method_name, *args, &block)
+    first_part = method_name[0..5]
+    second_part = method_name[7..-1]
+    if first_part == "update"
+      args.unshift(second_part)
+      new_obj = {}
+      new_obj[second_part] = *args
+      self.send(:update, new_obj)
+    end
   end
 
   def save!
