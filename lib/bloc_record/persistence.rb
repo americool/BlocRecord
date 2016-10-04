@@ -36,8 +36,8 @@ module Persistence
       where_clause = ";"
     end
 
-    connection.execute <<-SQL
-      UPDATE #{table}
+    self.class.connection.execute <<-SQL
+      UPDATE #{self.class.table}
       SET #{updates_array * ","} #{where_clause}
     SQL
 
@@ -67,7 +67,7 @@ module Persistence
   end
 
   def update_attribute(attribute, value)
-    self.class.update(self.id, { attribute => value })
+    update(self.id, { attribute => value })
   end
 
   def update_all(updates)
@@ -75,7 +75,8 @@ module Persistence
   end
 
   def update_attributes(updates)
-    self.class.update(self.id, updates)
+    puts "test!"
+    update(self.id, updates)
   end
 
 end
