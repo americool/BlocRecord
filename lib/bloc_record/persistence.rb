@@ -21,47 +21,52 @@ module Persistence
       data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
       new(data)
     end
-  end
 
-  def update(ids, updates)
-    if updates.keys.uniq == updates.keys
-      updates = BlocRecord::Utility.convert_keys(updates)
-      updates.delete "id"
-      updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
 
-      if ids.class == Fixnum
-        where_clause = "WHERE id = #{ids};"
-      elsif ids.class == Array
-        where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
-      else
-        where_clause = ";"
-      end
+    def update(ids, updates)
+      if updates.keys.uniq == updates.keys
+        updates = BlocRecord::Utility.convert_keys(updates)
+        updates.delete "id"
+        updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
 
-      self.class.connection.execute <<-SQL
-        UPDATE #{self.class.table}
-        SET #{updates_array * ","} #{where_clause}
-      SQL
-
-      true
-    else
-      updates.delete "id"
-      keys = updates.keys
-      potential_duplicate = nil
-      keys.each_with_index do |name, index|
-        if potential_duplicate == name
-          duplicate = name
-          duplicate_index = index
-          break
+        if ids.class == Fixnum
+          where_clause = "WHERE id = #{ids};"
+        elsif ids.class == Array
+          where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
         else
-          potential_duplicate = name
+          where_clause = ";"
         end
+
+        connection.execute <<-SQL
+          UPDATE #{table}
+          SET #{updates_array * ","} #{where_clause}
+        SQL
+
+        true
+      else
+        updates.delete "id"
+        keys = updates.keys
+        potential_duplicate = nil
+        keys.each_with_index do |name, index|
+          if potential_duplicate == name
+            duplicate = name
+            duplicate_index = index
+            break
+          else
+            potential_duplicate = name
+          end
+        end
+        new_hash = updates[duplicate]
+        new_id = ids[duplicate_index]
+        updates.delete(duplicate)
+        ids.delete(duplicate_index)
+        update(new_id, new_hash)
+        update(ids, updates)
       end
-      new_hash = updates[duplicate]
-      new_id = ids[duplicate_index]
-      updates.delete(duplicate)
-      ids.delete(duplicate_index)
-      update(new_id, new_hash)
-      update(ids, updates)
+    end
+
+    def update_all(updates)
+      update(nil, updates)
     end
   end
 
@@ -141,15 +146,11 @@ module Persistence
   end
 
   def update_attribute(attribute, value)
-    update(self.id, { attribute => value })
-  end
-
-  def update_all(updates)
-    update(nil, updates)
+    self.class.update(self.id, { attribute => value })
   end
 
   def update_attributes(updates)
-    update(self.id, updates)
+    self.class.update(self.id, updates)
   end
 
 end
