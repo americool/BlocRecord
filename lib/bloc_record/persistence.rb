@@ -24,7 +24,8 @@ module Persistence
 
 
     def update(ids, updates)
-      if updates.keys.uniq == updates.keys
+      case updates
+      when Hash
         updates = BlocRecord::Utility.convert_keys(updates)
         updates.delete "id"
         updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
@@ -43,25 +44,10 @@ module Persistence
         SQL
 
         true
-      else
-        updates.delete "id"
-        keys = updates.keys
-        potential_duplicate = nil
-        keys.each_with_index do |name, index|
-          if potential_duplicate == name
-            duplicate = name
-            duplicate_index = index
-            break
-          else
-            potential_duplicate = name
-          end
+      when Array
+        updates.each_with_index do |hash, index|
+          update(ids[index], hash)
         end
-        new_hash = updates[duplicate]
-        new_id = ids[duplicate_index]
-        updates.delete(duplicate)
-        ids.delete(duplicate_index)
-        update(new_id, new_hash)
-        update(ids, updates)
       end
     end
 
@@ -74,10 +60,9 @@ module Persistence
     first_part = method_name[0..5]
     second_part = method_name[7..-1]
     if first_part == "update"
-      args.unshift(second_part)
       new_obj = {}
-      new_obj[second_part] = *args
-      self.send(:update, new_obj)
+      new_obj[second_part] = args.first
+      self.send(:update, self.id, new_obj)
     end
   end
 
