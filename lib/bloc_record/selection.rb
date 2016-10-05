@@ -38,6 +38,8 @@ module Selection
     if first_part == "find_by"
       args.unshift(second_part)
       self.send(:find_by, *args)
+    else
+      super
     end
   end
 
@@ -50,6 +52,14 @@ module Selection
   end
 
   def find_each(batch_hash={})
+    find_in_batches(batch_hash) do |collection|
+      collection.each do |record|
+        yield record
+      end
+    end
+  end
+
+  def find_in_batches(batch_hash)
     if batch_hash.empty?
       connection.all.each do |item|
         yield item
@@ -57,21 +67,11 @@ module Selection
     else
       start = batch_hash[:start]
       limit = batch_hash[:batch_size]
-      count = 0
-      collection = connection.all
-      while count < limit
-        yield collection[start + count]
-        count+=1
-      end
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table} LIMIT #{limit} OFFSET #{start}
+      SQL
+      yield rows_to_array(rows)
     end
-  end 
-
-  def find_in_batches(batch_hash)
-    array = []
-    find_each(batch_hash) do |x|
-     array << x
-   end
-    yield array
   end
 
   def take_one
