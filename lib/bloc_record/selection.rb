@@ -201,6 +201,41 @@ module Selection
     rows_to_array(rows)
   end
 
+  def select(*fields)
+    column_array = BlocRecord::Schema.columns
+    fields.each do |field|
+      unless column_array.include?(field)
+        raise ArgumentError, "MissingAttributeError: missing attribute: #{field}"
+      end
+    end
+    rows = connection.execute <<-SQL
+      SELECT #{fields * ", "} FROM #{table};
+    SQL
+    collection = BlocRecord::Collection.new
+    rows.each { |row| collection << new(Hash[fields.zip(row)]) }
+    collection
+  end
+
+
+  def limit(value, offset=0)
+    rows = connection.execute <<-SQL
+      SELECT * FROM #{table} LIMIT #{value} OFFEST #{offset};
+    SQL
+    rows_to_array(rows)
+  end
+
+  def group(*args)
+    conditions = args.join(', ')
+
+    rows = connection.execute <<-SQL
+      SELECT * FROM #{table}
+      GROUP BY #{conditions};
+    SQL
+
+    rows_to_array(rows)
+  end
+
+
   private
   def init_object_from_row(row)
     if row
