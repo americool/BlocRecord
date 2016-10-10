@@ -21,7 +21,51 @@ module Persistence
       data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
       new(data)
     end
+
+
+    def update(ids, updates)
+      case updates
+      when Hash
+        updates = BlocRecord::Utility.convert_keys(updates)
+        updates.delete "id"
+        updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
+
+        if ids.class == Fixnum
+          where_clause = "WHERE id = #{ids};"
+        elsif ids.class == Array
+          where_clause = ids.empty? ? ";" : "WHERE id IN (#{ids.join(",")});"
+        else
+          where_clause = ";"
+        end
+
+        connection.execute <<-SQL
+          UPDATE #{table}
+          SET #{updates_array * ","} #{where_clause}
+        SQL
+
+        true
+      when Array
+        updates.each_with_index do |hash, index|
+          update(ids[index], hash)
+        end
+      end
+    end
+
+    def update_all(updates)
+      update(nil, updates)
+    end
   end
+
+  def method_missing(method_name, *args, &block)
+    first_part = method_name[0..5]
+    second_part = method_name[7..-1]
+    if first_part == "update"
+      new_obj = {}
+      new_obj[second_part] = args.first
+      self.send(:update, self.id, new_obj)
+    end
+  end
+
   def save!
     unless self.id
       self.id = self.class.create(BlocRecord::Utility.ininstance_variables_to_hash(self)).id
@@ -43,4 +87,13 @@ module Persistence
   def save
     self.save! rescue false
   end
+
+  def update_attribute(attribute, value)
+    self.class.update(self.id, { attribute => value })
+  end
+
+  def update_attributes(updates)
+    self.class.update(self.id, updates)
+  end
+
 end
