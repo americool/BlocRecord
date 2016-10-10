@@ -54,6 +54,48 @@ module Persistence
     def update_all(updates)
       update(nil, updates)
     end
+
+    def destroy(*id)
+      if id.length > 1
+        where_clause = "WHERE id IN (#{id.join(",")});"
+      else
+        where_clause = "WHERE id = #{id.first};"
+      end
+      connection.execute <<-SQL
+        DELETE FROM #{table} #{where_clause}
+      SQL
+
+      true
+    end
+
+    def destroy_all(conditions_hash=nil, *extra_args)
+      if conditions_hash && !conditions_hash.empty?
+        case conditions_hash
+        when Hash
+          conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
+          conditions = conditions_hash.map{|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+        when String
+          if extra_args.is_a?(Array)
+            conditions_array = conditions_hash.split("?")
+            conditions_array = conditions_array.each_with_index.map do |condition, index|
+              condition + "'" + extra_args[index] + "'"
+            end
+            conditions = conditions_array.join(",")
+          else
+            conditions = conditions_hash
+          end
+        end
+          connection.execute <<-SQL
+            DELETE FROM #{table}
+            WHERE #{conditions};
+          SQL
+      else
+        connection.execute <<-SQL
+          DELETE FROM #{table}
+        SQL
+      end
+      true
+    end
   end
 
   def method_missing(method_name, *args, &block)
@@ -65,6 +107,8 @@ module Persistence
       self.send(:update, self.id, new_obj)
     end
   end
+
+
 
   def save!
     unless self.id
@@ -82,6 +126,10 @@ module Persistence
     SQL
 
     true
+  end
+
+  def destroy
+    self.class.destroy(self.id)
   end
 
   def save
