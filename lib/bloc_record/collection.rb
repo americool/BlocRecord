@@ -25,10 +25,12 @@ module BlocRecord
       rows_to_array(rows)
     end
 
-    def not
+    def not(*args)
+      expression_hash = BlocRecord::Utility.convert_keys(args.first)
+      expression = expression_hash.map {|key, value| "#{key}!=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
       ids = self.map(&:id).join(", ")
       rows = self.first.class.connection.execute <<-SQL
-        SELECT #{self.first.class.attributes} FROM #{self.first.class.table} WHERE id NOT IN (#{ids})
+        SELECT #{self.first.class.attributes} FROM #{self.first.class.table} WHERE (#{expression}) AND id IN (#{ids})
       SQL
       rows_to_array(rows)
     end
