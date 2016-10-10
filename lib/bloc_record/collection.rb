@@ -24,7 +24,15 @@ module BlocRecord
       SQL
       rows_to_array(rows)
     end
-    
+
+    def not
+      ids = self.map(&:id).join(", ")
+      rows = self.first.class.connection.execute <<-SQL
+        SELECT #{self.first.class.attributes} FROM #{self.first.class.table} WHERE id NOT IN (#{ids})
+      SQL
+      rows_to_array(rows)
+    end
+
     def update_all(updates)
       ids = self.map(&:id)
       self.any? ? self.first.class.update(ids, updates) : false
